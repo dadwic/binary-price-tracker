@@ -4,18 +4,28 @@ import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
+import MenuItem from "@mui/material/MenuItem";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
 import Typography from "@mui/material/Typography";
 import Footer from "./Footer";
 
 export default function Tracker() {
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get("email"),
-      password: data.get("password"),
-    });
+  const [markets, setMarkets] = React.useState([]);
+  var ws = new WebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089");
+
+  ws.onopen = function (e) {
+    ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
+  };
+
+  ws.onmessage = function (msg) {
+    var data = JSON.parse(msg.data);
+    try {
+      if ((data.event = "data")) {
+        setMarkets(data.active_symbols);
+      }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
@@ -49,12 +59,7 @@ export default function Tracker() {
           <Typography component="h1" variant="h5">
             Price Tracker
           </Typography>
-          <Box
-            component="form"
-            noValidate
-            onSubmit={handleSubmit}
-            sx={{ mt: 3 }}
-          >
+          <Box noValidate component="form" sx={{ mt: 3 }}>
             <TextField
               select
               fullWidth
@@ -62,7 +67,11 @@ export default function Tracker() {
               label="Markets"
               id="markets"
               name="markets"
-            />
+            >
+              {markets.map((market, key) => (
+                <MenuItem key={key}>{market.market_display_name}</MenuItem>
+              ))}
+            </TextField>
             <TextField
               select
               fullWidth
