@@ -5,12 +5,21 @@ import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import MenuItem from "@mui/material/MenuItem";
+import LinearProgress from "@mui/material/LinearProgress";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
 import Typography from "@mui/material/Typography";
 import Footer from "./Footer";
 
 export default function Tracker() {
+  const [loading, setLoading] = React.useState(true);
+  // List of markets
   const [markets, setMarkets] = React.useState([]);
+  const [market, setMarket] = React.useState("");
+  // List of symbols
+  const [symbols, setSymbols] = React.useState([]);
+  const [symbol, setSymbol] = React.useState("");
+
+  // Markets socket
   var ws = new WebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089");
 
   ws.onopen = function (e) {
@@ -21,11 +30,21 @@ export default function Tracker() {
     var data = JSON.parse(msg.data);
     try {
       if ((data.event = "data")) {
-        setMarkets(data.active_symbols);
+        setLoading(false);
+        setMarkets(data?.active_symbols || []);
       }
     } catch (err) {
       console.log(err);
     }
+  };
+
+  const handleChangeMarket = (event) => {
+    setMarket(event.target.value);
+    setSymbols(event.target.value.split("/"));
+  };
+
+  const handleChangeSymbol = (event) => {
+    setSymbol(event.target.value);
   };
 
   return (
@@ -44,6 +63,7 @@ export default function Tracker() {
         }}
       />
       <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
+        {loading && <LinearProgress />}
         <Box
           sx={{
             my: 8,
@@ -63,23 +83,37 @@ export default function Tracker() {
             <TextField
               select
               fullWidth
+              disabled={loading}
               margin="normal"
               label="Markets"
               id="markets"
               name="markets"
+              value={market}
+              onChange={handleChangeMarket}
             >
-              {markets.map((market, key) => (
-                <MenuItem key={key}>{market.market_display_name}</MenuItem>
+              {markets.map((m, key) => (
+                <MenuItem key={key} value={m.display_name}>
+                  {m.market_display_name}
+                </MenuItem>
               ))}
             </TextField>
             <TextField
               select
               fullWidth
+              disabled={loading}
               margin="normal"
               label="Symbols"
               name="symbols"
               id="symbols"
-            />
+              value={symbol}
+              onChange={handleChangeSymbol}
+            >
+              {symbols.map((s, key) => (
+                <MenuItem key={key} value={s}>
+                  {s}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               fullWidth
               disabled
