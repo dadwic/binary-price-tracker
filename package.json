@@ -1,6 +1,6 @@
 {
-  "name": "create-react-app",
-  "version": "5.0.0",
+  "name": "binary-price-tracker",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "start": "react-scripts start",
@@ -13,10 +13,10 @@
     "@emotion/styled": "latest",
     "@mui/icons-material": "^5.8.4",
     "@mui/material": "latest",
-    "lodash.throttle": "^4.1.1",
     "react": "latest",
     "react-dom": "latest",
-    "react-scripts": "latest"
+    "react-scripts": "latest",
+    "react-use-websocket": "^4.2.0"
   },
   "browserslist": {
     "production": [

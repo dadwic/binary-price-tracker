@@ -1,76 +1,89 @@
-import * as React from "react";
-import throttle from "lodash.throttle";
+import React, { useEffect, useState } from "react";
+import useWebSocket, { ReadyState } from "react-use-websocket";
 import Avatar from "@mui/material/Avatar";
 import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Alert from "@mui/material/Alert";
+import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
+import CircleIcon from "@mui/icons-material/SwapVerticalCircle";
 import LinearProgress from "@mui/material/LinearProgress";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
-import Typography from "@mui/material/Typography";
 import { priceFormat } from "utils";
 import Footer from "./Footer";
 
 export default function Tracker() {
-  const [error, setError] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   // Market states
-  const [tick, setTick] = React.useState(null);
-  const [markets, setMarkets] = React.useState([]);
-  const [symbol, setSymbol] = React.useState("");
-  const [market, setMarket] = React.useState({ symbol: "" });
+  const [tick, setTick] = useState(null);
+  const [markets, setMarkets] = useState([]);
+  const [symbol, setSymbol] = useState("");
+  const [market, setMarket] = useState({ symbol: "" });
+  const { sendJsonMessage, lastMessage, readyState, getWebSocket } =
+    useWebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089", {
+      shouldReconnect: () => true,
+    });
 
-  // Markets socket
-  var ws = new WebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089");
+  useEffect(() => {
+    sendJsonMessage({ active_symbols: "brief", product_type: "basic" });
+  }, []);
 
-  ws.onopen = (e) => {
-    ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
-    if (symbol) {
-      ws.send(
-        JSON.stringify({
-          ticks: symbol,
-          subscribe: 1,
-        })
-      );
-    }
-  };
-
-  ws.onmessage = throttle((msg) => {
-    var data = JSON.parse(msg.data);
-    try {
-      if ((data.event = "data")) {
-        setLoading(false);
-        if ((data.msg_type = "active_symbols")) {
-          if (data.active_symbols) {
-            setMarkets([...data.active_symbols]);
-          }
-        }
-        if ((data.msg_type = "tick")) {
-          if (data.error) setError(data.error.message);
-          if (data.tick) {
-            setError(null);
-            setTick(data.tick);
+  useEffect(() => {
+    if (lastMessage !== null) {
+      setLoading(false);
+      const { msg_type, ...data } = JSON.parse(lastMessage.data);
+      if (msg_type === "active_symbols") {
+        setMarkets((prev) => prev.concat(data?.active_symbols || []));
+      }
+      if (msg_type === "tick") {
+        if (data.tick) {
+          // Update current symbol ticks
+          if (data.tick.symbol === symbol) {
+            setTick((prev) => ({
+              ...data.tick,
+              asc: data.tick.quote >= prev?.quote,
+            }));
           }
         }
       }
-    } catch (err) {
-      console.log(err);
     }
-  }, 200);
+  }, [lastMessage]);
+
+  useEffect(() => {
+    if (symbol) {
+      setLoading(true);
+      sendJsonMessage({
+        ticks: symbol,
+        subscribe: 1,
+      });
+    }
+  }, [symbol]);
 
   const handleChangeMarket = (event) => {
     setSymbol("");
     setTick(null);
     setError(null);
     // Find market by symbol
-    setMarket(markets.find(({ symbol }) => symbol === event.target.value));
+    setMarket(markets.find((m) => m.symbol === event.target.value));
+    // Unsubscribe tick chanel
+    // getWebSocket().close();
   };
 
   const handleChangeSymbol = (event) => {
     setSymbol(event.target.value);
   };
+
+  const connectionStatus = {
+    [ReadyState.CONNECTING]: ["Connecting", "info"],
+    [ReadyState.OPEN]: ["Connected", "success"],
+    [ReadyState.CLOSING]: ["Closing", "warning"],
+    [ReadyState.CLOSED]: ["Closed", "error"],
+    [ReadyState.UNINSTANTIATED]: ["Uninstantiated", "default"],
+  }[readyState];
 
   return (
     <Grid container component="main" sx={{ height: "100vh" }}>
@@ -118,6 +131,13 @@ export default function Tracker() {
           <Typography component="h1" variant="h5">
             Price Tracker
           </Typography>
+          <Chip
+            icon={<CircleIcon />}
+            label={connectionStatus[0]}
+            color={connectionStatus[1]}
+            variant="outlined"
+            sx={{ mt: 2 }}
+          />
           <Box
             noValidate
             component="form"
@@ -172,7 +192,7 @@ export default function Tracker() {
               id="current-price"
               value={priceFormat(tick?.quote || "0")}
               {...(tick && {
-                color: tick.quote > tick.bid ? "success" : "error",
+                color: tick.asc ? "success" : "error",
               })}
               InputProps={{
                 readOnly: true,
