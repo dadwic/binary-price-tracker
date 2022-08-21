@@ -4,6 +4,7 @@ import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
+import Alert from "@mui/material/Alert";
 import MenuItem from "@mui/material/MenuItem";
 import LinearProgress from "@mui/material/LinearProgress";
 import GpsFixedIcon from "@mui/icons-material/GpsFixed";
@@ -11,6 +12,8 @@ import Typography from "@mui/material/Typography";
 import Footer from "./Footer";
 
 export default function Tracker() {
+  const [quote, setQuote] = React.useState("0");
+  const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   // List of markets
   const [markets, setMarkets] = React.useState([]);
@@ -38,8 +41,15 @@ export default function Tracker() {
     var data = JSON.parse(msg.data);
     try {
       if ((data.event = "data")) {
-        setLoading(false);
-        setMarkets(data?.active_symbols || []);
+        if ((data.msg_type = "active_symbols")) {
+          setLoading(false);
+          setMarkets([...markets, ...(data?.active_symbols || [])]);
+        }
+        if ((data.msg_type = "tick")) {
+          setLoading(false);
+          if (data.error) setError(data.error.message);
+          if (data.tick) setQuote(`${data.tick?.quote || 0}`);
+        }
       }
     } catch (err) {
       console.log(err);
@@ -124,8 +134,13 @@ export default function Tracker() {
               label="Current price of the symbol"
               name="current-price"
               id="current-price"
-              defaultValue="0.0"
+              value={quote}
             />
+            {error && (
+              <Alert severity="error" sx={{ mt: 3 }}>
+                {error}
+              </Alert>
+            )}
             <Footer />
           </Box>
         </Box>
