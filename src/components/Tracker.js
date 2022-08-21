@@ -24,6 +24,14 @@ export default function Tracker() {
 
   ws.onopen = function (e) {
     ws.send(JSON.stringify({ active_symbols: "brief", product_type: "basic" }));
+    if (symbol) {
+      ws.send(
+        JSON.stringify({
+          ticks: symbol,
+          subscribe: 1,
+        })
+      );
+    }
   };
 
   ws.onmessage = function (msg) {
@@ -40,7 +48,6 @@ export default function Tracker() {
 
   const handleChangeMarket = (event) => {
     setMarket(event.target.value);
-    setSymbols(event.target.value.split("/"));
   };
 
   const handleChangeSymbol = (event) => {
@@ -92,7 +99,7 @@ export default function Tracker() {
               onChange={handleChangeMarket}
             >
               {markets.map((m, key) => (
-                <MenuItem key={key} value={m.display_name}>
+                <MenuItem key={key} value={m.symbol}>
                   {m.market_display_name}
                 </MenuItem>
               ))}
@@ -108,11 +115,7 @@ export default function Tracker() {
               value={symbol}
               onChange={handleChangeSymbol}
             >
-              {symbols.map((s, key) => (
-                <MenuItem key={key} value={s}>
-                  {s}
-                </MenuItem>
-              ))}
+              <MenuItem value={market}>{market}</MenuItem>
             </TextField>
             <TextField
               fullWidth
